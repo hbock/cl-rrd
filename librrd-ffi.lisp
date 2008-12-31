@@ -72,6 +72,21 @@
   (argc :int)
   (argv :pointer))
 
+(defun librrd-call (cfun parameters &optional &key (debug t))
+  "Call a standard RRD library function with specified parameters.
+For use with RRD functions that take argc/argv type parameters only."
+  (declare (type function cfun)
+	   (type list parameters))
+  ;; (apply cfun)
+  (let* ((rrd-argv (cons "dummy" parameters))
+	 (rrd-argc (length rrd-argv)))
+    (if debug
+	(format t "call ~a, ~d arguments.~%argv: ~{~a ~}~%" cfun rrd-argc rrd-argv)
+	(let ((foreign-argv
+	       (cffi:foreign-alloc :string :initial-contents rrd-argv :null-terminated-p t)))
+	  (funcall cfun rrd-argc foreign-argv)
+	  (cffi:foreign-free foreign-argv)))))
+
 (defun rrd-create (args)
   (let ((tmp (pushnew "dummy" args)))
     (sb-int:with-float-traps-masked (:invalid :divide-by-zero)

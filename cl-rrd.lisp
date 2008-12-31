@@ -59,16 +59,16 @@
 
 (defun ds-string (name type &rest dst-spec)
   "Create a string used by RRD to define a data source (DS)."
-  (cond ((eql type :compute)
-	 (error "COMPUTE DST not implemented yet.."))
-	(t
-	 (destructuring-bind (heartbeat &optional (min 0) max) dst-spec
-	   (when (and max
-		      (not (or (eql min :unknown) (eql max :unknown)))
-		      (> min max))
-	     (error "Minimum DS value (~d) is greater than declared maximum (~d)!" min max))
-	   (format nil "DS:~a:~a:~d~@[:~d~]~@[:~d~]"
-		   (to-variable-name name) (string type) heartbeat min max)))))
+  (declare (type symbol name type))
+  (let ((ds-string (format nil "DS:~a:~a:" (to-variable-name name) type)))
+    (ecase type
+      (:compute
+       (strcat ds-string (compile-rpn (first dst-spec))))
+      ((:gauge :counter :derive :absolute)
+       (destructuring-bind (heartbeat &optional (min 0) max) dst-spec
+	 (when (and max (> min max))
+	   (error "Minimum DS value (~d) is greater than declared maximum (~d)!" min max))
+	 (strcat ds-string (format nil "~d~@[:~d~]~@[:~d~]" heartbeat min max)))))))
 
 (defun rra-string (cf &key (xff 0.5) (steps 1) rows)
   (declare (type real xff)
@@ -104,19 +104,3 @@
 		     (append
 		      (loop :for (time value) :in update-list
 			 :collect (format nil "~d:~a" time value))))))
-
-
-(defun librrd-call (cfun parameters &optional &key (debug t))
-  "Call a standard RRD library function with specified parameters.
-For use with RRD functions that take argc/argv type parameters only."
-  (declare (type function cfun)
-	   (type list parameters))
-  ;; (apply cfun)
-  (let* ((rrd-argv (cons "dummy" parameters))
-	 (rrd-argc (length rrd-argv)))
-    (if debug
-	(format t "call ~a, ~d arguments.~%argv: ~{~a ~}~%" cfun rrd-argc rrd-argv)
-	(let ((foreign-argv
-	       (cffi:foreign-alloc :string :initial-contents rrd-argv :null-terminated-p t)))
-	  (funcall cfun rrd-argc foreign-argv)
-	  (cffi:foreign-free foreign-argv)))))
