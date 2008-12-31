@@ -55,8 +55,12 @@
 (def-rpn-operators '(sort rev avg) 1)
 (def-rpn-operators '(trend trendnan) 2)
 
+;;; Direct stack operations
+(def-rpn-operators '(dup pop exc) 0)
+
 ;;; RPN special values
 (def-rpn-special-values '(:unkn :inf :neginf :prev :count))
+(def-rpn-special-values '(:now :time :ltime))
 
 (defun to-string (value)
   (etypecase value
@@ -109,6 +113,11 @@
 	  (push (parse-rpn operand) rpn-list))
 	(push (format nil "~a" operator) rpn-list))))))
 
+(defun flatten (tree)
+  (loop :for element :in tree
+     :if (listp element) :append (flatten element)
+     :else :collect element))
+
 (defun compile-rpn (expression)
   "Create an RPN string from the given Lisp-like RPN expression."
-  (format nil "~{~a~^,~}" (parse-rpn expression)))
+  (format nil "~{~a~^,~}" (flatten (parse-rpn expression))))
