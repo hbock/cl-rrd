@@ -31,14 +31,20 @@
 ;;             "RRA:AVERAGE:0.5:1:24"
 ;;             "RRA:AVERAGE:0.5:6:10p=300"))
 
-(define-database packets (:start 0 :step 300)
-  ((:data-source incoming :gauge 600 0 0)
-   (:data-source outgoing :gauge 600 0 0)
-   (:archive :average :rows 48)))
+(defun make-graph ()
+  (with-database packets ("packets.rrd" :start 0 :step 300)
+      ((:data-source incoming :gauge 600 0 5)
+       (:data-source outgoing :gauge 600 0 5)
+       (:data-source total :compute (+ incoming outgoing))
+       (:archive :average :rows 48))
+    (format t "Graphing!")))
 
-
-;;; mydata,8,*
-(rrd:compile-rpn (* mydata 8))
+;;; "mydata,8,*"
+(rrd:compile-rpn '(* mydata 8))
+;;;
+(rrd:compile-rpn '(+ pred (* dev 2)))
+;;; "pred,dev,2,radius,SIN,MIN,*,+"
+(rrd:compile-rpn '(+ pred (* dev (min 2 (sin radius)))))
 
 ;; (rrd-update (list *rrd-test-file* "920804700:12345" "920805000:12357" "920805300:12363"))
 ;; (rrd-update (list *rrd-test-file* "920805600:12363" "920805900:12363" "920806200:12373"))
