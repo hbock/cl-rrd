@@ -28,10 +28,9 @@
 
 (asdf:defsystem cl-rrd
   :name "cl-rrd"
-  :author "Brandon Edens <brandon@cs.uri.edu>"
+  :author "Harry Bock <harry@oshean.org>"
   :version "0.1"
-  :maintainer "Brandon Edens <brandon@cs.uri.edu>"
-  :description "Common Lisp bindings to librrd2"
+  :description "A Common Lisp interface to the RRDTool graphing system."
   :long-description ""
   :depends-on (:cffi)
   :serial t
