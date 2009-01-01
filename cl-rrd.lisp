@@ -25,37 +25,67 @@
 ;;; PDP: Primary data point.
 ;;; CF: consolidating function.
 
-(defclass rrd ()
+(defclass database ()
   ((file :initarg :file
 	 :accessor rrd-file
-	 :initform "")
+	 :initform #P"")
    (start :initarg :start
 	  :accessor rrd-start
 	  :initform 0)
    (step :initarg :step
 	 :accessor rrd-step)
    (data-sources :initarg :data-sources
-		 :accessor rrd-data-sources)
+		 :accessor rrd-data-sources
+		 :initform nil)
    (archives :initarg :archives
-	     :accessor rrd-archives)))
+	     :accessor rrd-archives
+	     :initform nil)))
 
-(defclass rra ()
+(defclass archive ()
   ((cf-name :initarg :cf-name)
    (xff :initarg :xff)
    (steps :initarg :steps)
    (rows :initarg :rows)))
 
-(defmacro define-database (name (&key (start nil startp) (step nil stepp))
-			   &rest spec-list)
-  (let ((filename (format nil "~a.rrd" (to-variable-name name)))
-	ds-list rra-list)
-    (dolist (spec spec-list)
-      (case (first spec)
-	(:data-source
-	 (push (apply #'ds-string (rest spec)) ds-list))
-	(:archive
-	 (push (apply #'rra-string (rest spec)) rra-list))))
-    (append ds-list rra-list)))
+(defmethod create ((rrd database))
+  (with-slots (file start step data-sources archives) rrd
+    (librrd-call
+     #'%rrd-create
+     (cons (namestring file)
+	   (append
+	    (when (slot-boundp rrd 'start)
+	      (list "--start" (to-string (slot-value rrd 'start))))
+	    (when (slot-boundp rrd 'step)
+	      (list "--step" (to-string (slot-value rrd 'step))))	    
+	    data-sources archives)))))
+
+(defmethod update ((rrd database) update-list)
+  (with-slots (file) rrd
+    (librrd-call
+     #'%rrd-update
+     (cons (namestring file)
+	   (append
+	    (loop :for (time value) :in update-list
+	       :collect (format nil "~d:~a" time value)))))))
+
+(defmacro with-database (name (filename &key (start nil startp) (step nil stepp)
+					(if-does-not-exist :create))
+			 spec-list &body body)
+  `(let ((,name (make-instance 'database :file ,filename :start ,start :step ,step)))
+     (with-slots (data-sources archives) ,name
+       ,@(loop :for spec :in spec-list
+	    :collect
+	    (case (first spec)
+	      (:data-source
+	       `(push ,(apply #'ds-string (rest spec)) data-sources))
+	      (:archive
+	       `(push ,(apply #'rra-string (rest spec)) archives))))
+       (setf data-sources (nreverse data-sources))
+       (setf archives (nreverse archives))
+       ,@(when (eql if-does-not-exist :create)
+	       `((when (not (probe-file ,filename))
+		   (create,name))))
+       ,@body)))
 
 (defun ds-string (name type &rest dst-spec)
   "Create a string used by RRD to define a data source (DS)."
@@ -65,9 +95,9 @@
       (:compute
        (strcat ds-string (compile-rpn (first dst-spec))))
       ((:gauge :counter :derive :absolute)
-       (destructuring-bind (heartbeat &optional (min 0) max) dst-spec
-	 (when (and max (> min max))
-	   (error "Minimum DS value (~d) is greater than declared maximum (~d)!" min max))
+       (destructuring-bind (heartbeat &optional min max) dst-spec
+	 ;; (when (and max (>= min max))
+	 ;;   (error "Minimum DS value (~a) is not less than specified maximum (~a)." min max))
 	 (strcat ds-string (format nil "~d~@[:~d~]~@[:~d~]" heartbeat min max)))))))
 
 (defun rra-string (consolidation-function &key (xff 0.5) (steps 1) rows)
@@ -78,29 +108,4 @@
   (ecase consolidation-function
     ((:average :min :max :last)
      (format nil "RRA:~a:~f:~d:~d"
-	     (to-string consolidation-function) (float xff) steps rows))))
-
-(defun clear-errors ()
-  (%rrd-clear-error))
-
-(defun create (filename ds-list rra-list &key (start nil startp) (step nil stepp))
-  "Create a new RRD database."
-  (assert (or (not stepp) (> step 0)))
-  (assert (or (not startp) (> start 0)))
-
-  (clear-errors)
-  (librrd-call #'%rrd-create
-	       (cons (namestring filename)
-		     (append
-		      (when startp (list "--start" (to-string start)))
-		      (when stepp (list "--step" (to-string step)))
-		      ds-list rra-list))))
-
-(defun update (filename update-list)
-  (declare (type list update-list))
-  (clear-errors)
-  (librrd-call #'%rrd-update
-	       (cons (namestring filename)
-		     (append
-		      (loop :for (time value) :in update-list
-			 :collect (format nil "~d:~a" time value))))))
+	     (string-upcase consolidation-function) (float xff) steps rows))))
