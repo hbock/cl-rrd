@@ -19,7 +19,7 @@
 (in-package :cl-rrd)
 
 (cffi:define-foreign-library librrd
-  (:unix (:or "../rrdtool-1.2.27/src/.libs/librrd.so.2" "librrd.so.2" "librrd.so"))
+  (:unix (:or "librrd.so.2" "librrd.so"))
   (t (:default "librrd")))
 
 (cffi:use-foreign-library librrd)
@@ -77,33 +77,23 @@
 For use with RRD functions that take argc/argv type parameters only."
   (declare (type function cfun)
 	   (type list parameters))
-  ;; (apply cfun)
+  (%rrd-clear-error)
   (let* ((rrd-argv (cons "dummy" parameters))
 	 (rrd-argc (length rrd-argv)))
-    (if debug
-	(format t "call ~a, ~d arguments.~%argv: ~{~a ~}~%" cfun rrd-argc rrd-argv)
-	(let ((foreign-argv
-	       (cffi:foreign-alloc :string :initial-contents rrd-argv :null-terminated-p t)))
-	  (funcall cfun rrd-argc foreign-argv)
-	  (cffi:foreign-free foreign-argv)))))
+    (when debug
+      (format t "call ~a, ~d arguments.~%argv: ~{~a ~}~%" cfun rrd-argc rrd-argv))
+    (let (foreign-return
+	  (foreign-argv
+	   (cffi:foreign-alloc :string :initial-contents rrd-argv :null-terminated-p t)))
+      (sb-int:with-float-traps-masked (:invalid :divide-by-zero)
+	(setf foreign-return (funcall cfun rrd-argc foreign-argv)))
+      (cffi:foreign-free foreign-argv)
 
-(defun rrd-create (args)
-  (let ((tmp (pushnew "dummy" args)))
-    (sb-int:with-float-traps-masked (:invalid :divide-by-zero)
-      (%rrd-create
-       (length tmp)
-       (cffi:foreign-alloc :string
-                           :initial-contents tmp
-                           :null-terminated-p t)))))
+      (unless (zerop (rrd-test-error))
+	(error "RRD library error: ~a" (rrd-get-error)))
+      
+      foreign-return)))
 
-(defun rrd-fetch (args)
-  (let ((tmp (pushnew "dummy" args)))
-    (sb-int:with-float-traps-masked (:invalid :divide-by-zero)
-      (%rrd-fetch
-       (length tmp)
-       (cffi:foreign-alloc :string
-                           :initial-contents tmp
-                           :null-terminated-p t)))))
 (defun rrd-graph (args)
   (let ((tmp (pushnew "dummy" args)))
    (cffi:with-foreign-objects
@@ -127,11 +117,4 @@ For use with RRD functions that take argc/argv type parameters only."
         ymin
         ymax)))))
 
-(defun rrd-update (args)
-  (let ((tmp (pushnew "dummy" args)))
-    (%rrd-update
-       (length tmp)
-       (cffi:foreign-alloc :string
-                           :initial-contents tmp
-                           :null-terminated-p t))))
 
