@@ -55,7 +55,7 @@
 	 (push (apply #'ds-string (rest spec)) ds-list))
 	(:archive
 	 (push (apply #'rra-string (rest spec)) rra-list))))
-    filename))
+    (append ds-list rra-list)))
 
 (defun ds-string (name type &rest dst-spec)
   "Create a string used by RRD to define a data source (DS)."
@@ -70,15 +70,15 @@
 	   (error "Minimum DS value (~d) is greater than declared maximum (~d)!" min max))
 	 (strcat ds-string (format nil "~d~@[:~d~]~@[:~d~]" heartbeat min max)))))))
 
-(defun rra-string (cf &key (xff 0.5) (steps 1) rows)
+(defun rra-string (consolidation-function &key (xff 0.5) (steps 1) rows)
   (declare (type real xff)
 	   (type (integer 1 *) steps rows))
   (unless (and (> 1.0 xff) (< 0.0 xff))
     (error "XFF must be between 0 and 1 (inclusive)."))
-  (let ((valid-cf-names (list :average :min :max :last)))
-    (unless (member cf valid-cf-names)
-      (error "Invalid consolidation function specified. Expected one of ~{~a~^, ~}." valid-cf-names)))
-  (format nil "RRA:~a:~f:~d:~d" (string cf) (float xff) steps rows))
+  (ecase consolidation-function
+    ((:average :min :max :last)
+     (format nil "RRA:~a:~f:~d:~d"
+	     (to-string consolidation-function) (float xff) steps rows))))
 
 (defun clear-errors ()
   (%rrd-clear-error))
