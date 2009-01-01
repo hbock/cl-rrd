@@ -19,7 +19,6 @@
 (in-package :cl-user)
 
 (defpackage :cl-rrd
+  (:nicknames :rrd)
   (:use :common-lisp)
-  (:nicknames :rrd))
-
-(in-package :cl-rrd)
+  (:export :compile-rpn))

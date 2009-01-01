@@ -92,7 +92,6 @@
 (defun to-variable-name (name)
   (unless (valid-variable-name name)
     (error "~a cannot be converted to a valid DS name." name))
-
   (let ((ds-name (string-downcase name)))
     (substitute #\_ #\- ds-name)))
 
