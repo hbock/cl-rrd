@@ -37,6 +37,7 @@
   :components
   ((:file "packages")
    (:file "specials")
+   (:file "utility")
    (:file "librrd-ffi")
    (:file "rpn")
    (:file "cl-rrd")))
