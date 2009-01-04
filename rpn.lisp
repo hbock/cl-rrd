@@ -62,14 +62,7 @@
 (def-rpn-special-values '(:unkn :inf :neginf :prev :count))
 (def-rpn-special-values '(:now :time :ltime))
 
-(defun to-string (value)
-  (etypecase value
-    (integer (format nil "~d" value))
-    (float   (format nil "~f" value))
-    (symbol (to-variable-name value))))
 
-(defun strcat (&rest strings)
-  (apply #'concatenate 'string strings))
 
 (defun valid-rpn-special (special)
   (declare (type keyword special))
