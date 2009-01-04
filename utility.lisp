@@ -28,6 +28,11 @@
 (defun strcat (&rest strings)
   (apply #'concatenate 'string strings))
 
+(defun flatten (tree)
+  (loop :for element :in tree
+     :if (listp element) :append (flatten element)
+     :else :collect element))
+
 (defun unix-time (&optional (time (get-universal-time)))
   (declare (type integer time))
   (- time +unix-epoch+))

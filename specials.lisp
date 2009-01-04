@@ -18,4 +18,23 @@
 ;;;; Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 (in-package :cl-rrd)
 
+(eval-when (:compile-toplevel :execute :load-toplevel)
+  (defvar *rpn-operator-map* (make-hash-table)
+    "Hash table holding RPN operators and their respective arity.")
+  (defvar *rpn-special-value-list* ()
+    "Hash table holding special RPN values.")
+
+  (defmacro def-rpn-special-values (special-list)
+    `(eval-when (:compile-toplevel :execute :load-toplevel)
+       (dolist (special ,special-list)
+	 (or (keywordp special) (error "Specified special value (~a) is not a keyword." special))
+	 (push special *rpn-special-value-list*))
+       (delete-duplicates *rpn-special-value-list*)))
+  
+  (defmacro def-rpn-operators (operator-list arity)
+    `(eval-when (:compile-toplevel :execute :load-toplevel)
+       (dolist (operator ,operator-list)
+	 (or (symbolp operator) (error "Specified operator (~a) is not a symbol." operator))
+	 (setf (gethash operator *rpn-operator-map*) ,arity)))))
+
 (defconstant +unix-epoch+ 2208988800)
