@@ -19,10 +19,7 @@
 ;;;; Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 (in-package :cl-rrd)
 
-;;; Basic example of the cl-rrd functionality.
-
-(defparameter *rrd-test-file* "/tmp/test.rrd")
-(defparameter *rrd-image-file* "/tmp/test.png")
+;;; Some simple usage examples.
 
 ;; (rrd-create
 ;;       (list *rrd-test-file*
@@ -31,25 +28,25 @@
 ;;             "RRA:AVERAGE:0.5:1:24"
 ;;             "RRA:AVERAGE:0.5:6:10p=300"))
 
+;; rrdtool create packets.rrd DS:incoming:GAUGE:600:0:5
+;;                            DS:outgoing:GAUGE:600:0:5
+;;                            DS:total:COMPUTE:incoming,outgoing,+
+;;                            
 (defun make-graph ()
   (with-database packets ("packets.rrd" :start 0 :step 300)
       ((:data-source incoming :gauge 600 0 5)
        (:data-source outgoing :gauge 600 0 5)
        (:data-source total :compute (+ incoming outgoing))
        (:archive :average :rows 48))
-    (format t "Graphing!")))
+    (update packets '((1231052709 5) (1231052909 6)) :template '(outgoing incoming))))
+
+;;; Some examples for using the RPN compiler.
 
 ;;; "mydata,8,*"
 (rrd:compile-rpn '(* mydata 8))
-;;;
+;;; "pred,dev,2,*,+"
 (rrd:compile-rpn '(+ pred (* dev 2)))
 ;;; "pred,dev,2,radius,SIN,MIN,*,+"
 (rrd:compile-rpn '(+ pred (* dev (min 2 (sin radius)))))
-
-;; (rrd-update (list *rrd-test-file* "920804700:12345" "920805000:12357" "920805300:12363"))
-;; (rrd-update (list *rrd-test-file* "920805600:12363" "920805900:12363" "920806200:12373"))
-;; (rrd-update (list *rrd-test-file* "920806500:12383" "920806800:12393" "920807100:12399"))
-;; (rrd-update (list *rrd-test-file* "920807400:12405" "920807700:12411" "920808000:12415"))
-;; (rrd-update (list *rrd-test-file* "920808300:12420" "920808600:12422" "920808900:12423"))
 
 ;; (rrd-graph (list *rrd-image-file "--start" "920804400" "--end" "920808000" "DEF:myspeed=/tmp/test.rrd:speed:AVERAGE" "LINE2:myspeed#FF0000"))

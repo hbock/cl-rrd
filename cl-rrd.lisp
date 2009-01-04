@@ -59,14 +59,28 @@
 	      (list "--step" (to-string (slot-value rrd 'step))))	    
 	    data-sources archives)))))
 
-(defmethod update ((rrd database) update-list)
+(defmethod update ((rrd database) update-list &key (template nil))
+  (declare (type list template))
   (with-slots (file) rrd
     (librrd-call
      #'%rrd-update
      (cons (namestring file)
 	   (append
-	    (loop :for (time value) :in update-list
-	       :collect (format nil "~d:~a" time value)))))))
+	    (when template
+	      (list "--template" (update-template-string template)))
+	    (loop :for update-spec :in update-list
+	       :collect (update-value-string update-spec)))))))
+
+(defun update-template-string (template-list)
+  (format nil "~{~a~^:~}"
+	  (loop :for data-source :in template-list
+	     :collect (to-variable-name data-source))))
+
+(defun update-value-string (update-spec)
+  (destructuring-bind (time &rest values) update-spec
+    (declare (type (or keyword integer) time))
+    (format nil "~a:~{~a~^:~}" (if (eql time :now) "N" (to-string time))
+	    (substitute-if "U" (lambda (value) (eql value :unknown)) values))))
 
 (defmacro with-database (name (filename &key (start nil startp) (step nil stepp)
 					(if-does-not-exist :create))
