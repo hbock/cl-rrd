@@ -49,7 +49,7 @@
 
 (defmethod create ((rrd database))
   (with-slots (file start step data-sources archives) rrd
-    (librrd-call
+    (rrd-call
      #'%rrd-create
      (cons (namestring file)
 	   (append
@@ -62,7 +62,7 @@
 (defmethod update ((rrd database) update-list &key (template nil))
   (declare (type list template))
   (with-slots (file) rrd
-    (librrd-call
+    (rrd-call
      #'%rrd-update
      (cons (namestring file)
 	   (append

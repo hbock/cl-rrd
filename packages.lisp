@@ -29,4 +29,7 @@
 	   :update
 	   :generate-graph
 	   ;; useful lower-level utilities
-	   :compile-rpn))
+	   :compile-rpn
+	   ;; cffi layer
+	   :rrd-call
+	   :rrd-call-graph))
