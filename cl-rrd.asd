@@ -40,4 +40,5 @@
    (:file "utility")
    (:file "librrd-ffi")
    (:file "rpn")
-   (:file "cl-rrd")))
+   (:file "cl-rrd")
+   (:file "graph")))
