@@ -18,10 +18,46 @@
 ;;;; Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 (in-package :cl-rrd)
 
-(defmacro generate-graph (filename (&key (start nil) (end nil) (vertical-label nil))
-			  graph-definitions &body body)
-  (declare (ignore body))
-  `(format nil "not-implemented D:"))
+;;; Most of the available options for rrd_graph.
+;;; See rrd_graph.c in the rrdtool source code.
+
+;;; No arguments
+(defun parse-graph-options (&rest arguments)
+  (flet ((switch-string (keyword)
+	   (format nil "--~a" (string-downcase keyword))))
+    (loop :with result = nil
+       :while arguments
+       :for key = (pop arguments) :do
+       (unless (keywordp key)
+	 (error "~a is not a keyword" key))
+       (ecase key
+	 ;; No arguments
+	 ((:full-size-mode :interlaced :rigid :logarithmic :lazy
+	   :no-legend :force-rules-legend :only-graph :alt-y-grid
+	   :no-minor :slope-mode :alt-autoscale :alt-autoscale-min
+	   :alt-autoscale-max :no-gridfit :alt-y-mrtg)
+	  (push (switch-string key) result))
+	 ;; One argument
+	 ((:start :end :x-grid :y-grid :vertical-label :width :height
+	   :upper-limit :lower-limit :base :color :font :title :imginfo
+	   :imgformat :zoom :right-axis :right-axis-label
+	   :right-axis-format :units-exponents :units-length :units)
+	  (when (null arguments)
+	    (error "Option ~a requires an argument; none supplied" key))
+	  (push (switch-string key) result)
+	  (push (to-string (pop arguments)) result)))
+       :finally (return (nreverse result)))))
+
+(defmacro generate-graph (filename (&rest options) graph-definitions)
+  `(rrd-call-graph
+    (append
+     (list (namestring ,filename))
+     (parse-graph-options ,@options)
+     ,@(loop :for definition :in graph-definitions :collect
+	  (case (car definition)
+	    (:def `(def-string ,@(cdr definition)))
+	    (:cdef `(cdef-string ,@(cdr definition)))
+	    (:vdef `(cdef-string ,@(cdr definition))))))))
 
 (defun escape (string)
   "Escape a string suitable for legend and time arguments to rrdtool commands."
