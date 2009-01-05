@@ -21,17 +21,11 @@
 
 ;;; Some simple usage examples.
 
-;; (rrd-create
-;;       (list *rrd-test-file*
-;;             "--start" "920804400"
-;;             "DS:speed:COUNTER:600:U:U"
-;;             "RRA:AVERAGE:0.5:1:24"
-;;             "RRA:AVERAGE:0.5:6:10p=300"))
+;; This will execute the equivalent to the following rrdtool command:
 
 ;; rrdtool create packets.rrd DS:incoming:GAUGE:600:0:5
 ;;                            DS:outgoing:GAUGE:600:0:5
 ;;                            DS:total:COMPUTE:incoming,outgoing,+
-;;                            
 (defun make-graph ()
   (with-database packets ("packets.rrd" :start 0 :step 300)
       ((:data-source incoming :gauge 600 0 5)
@@ -39,6 +33,25 @@
        (:data-source total :compute (+ incoming outgoing))
        (:archive :average :rows 48))
     (update packets '((1231052709 5) (1231052909 6)) :template '(outgoing incoming))))
+
+(defun test-1 ()
+  (with-database testing ("rrd-test.rrd" :start (unix-time) :step 300)
+      ((:data-source linear :gauge 600 0 6.283)
+       (:data-source sine :compute (sin linear))
+       (:archive :average :rows 50))
+    (loop with time = (unix-time)
+       :for i :from 0 :below 50
+       :collect (list (+ time (* 300 (1+ i))) (* (/ i 50) 2 pi)) :into update-list
+       :finally (update testing update-list))
+    ;; (generate-graph "test.png" (:start 1231129446 :end 1231144146 :vertical-label "Y")
+    ;; 	((:def linear-out testing linear :average)
+    ;; 	 (:def sine-out testing sine :average)
+    ;; 	 (:line2 linear-out "#FF0000")))
+    ))
+
+;; rrdtool graphv test.png --start 1231129446 --end 1231144146
+;; 'DEF:mylinear=rrd-test.rrd:linear:AVERAGE' 'DEF:mysine=rrd-test.rrd:sine:AVERAGE'
+;; 'LINE2:mylinear#FF0000' 'LINE2:mysine#00FF00'
 
 ;;; Some examples for using the RPN compiler.
 
@@ -48,5 +61,3 @@
 (rrd:compile-rpn '(+ pred (* dev 2)))
 ;;; "pred,dev,2,radius,SIN,MIN,*,+"
 (rrd:compile-rpn '(+ pred (* dev (min 2 (sin radius)))))
-
-;; (rrd-graph (list *rrd-image-file "--start" "920804400" "--end" "920808000" "DEF:myspeed=/tmp/test.rrd:speed:AVERAGE" "LINE2:myspeed#FF0000"))
