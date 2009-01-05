@@ -18,6 +18,11 @@
 ;;;; Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 (in-package :cl-rrd)
 
+(defmacro generate-graph (filename (&key (start nil) (end nil) (vertical-label nil))
+			  graph-definitions &body body)
+  (declare (ignore body))
+  `(format nil "not-implemented D:"))
+
 (defun escape (string)
   "Escape a string suitable for legend and time arguments to rrdtool commands."
   (with-output-to-string (out)
