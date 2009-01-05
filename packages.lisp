@@ -21,4 +21,12 @@
 (defpackage :cl-rrd
   (:nicknames :rrd)
   (:use :common-lisp)
-  (:export :compile-rpn))
+  (:export :database
+	   ;; macros
+	   :with-database
+	   ;; functions
+	   :create
+	   :update
+	   :generate-graph
+	   ;; useful lower-level utilities
+	   :compile-rpn))
