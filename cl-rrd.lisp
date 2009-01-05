@@ -80,11 +80,12 @@
   (destructuring-bind (time &rest values) update-spec
     (declare (type (or keyword integer) time))
     (format nil "~a:~{~a~^:~}" (if (eql time :now) "N" (to-string time))
-	    (substitute-if "U" (lambda (value) (eql value :unknown)) values))))
+	    (mapcar #'to-string
+		    (substitute-if "U" (lambda (value) (eql value :unknown)) values)))))
 
 (defmacro with-database (name (filename &key (start nil startp) (step nil stepp)
-					(if-does-not-exist :create))
-			 spec-list &body body)
+					(if-does-not-exist :create)
+					(if-exists :update)) spec-list &body body)
   `(let ((,name (make-instance 'database :file ,filename :start ,start :step ,step)))
      (with-slots (data-sources archives) ,name
        ,@(loop :for spec :in spec-list
@@ -96,9 +97,14 @@
 	       `(push ,(apply #'rra-string (rest spec)) archives))))
        (setf data-sources (nreverse data-sources))
        (setf archives (nreverse archives))
-       ,@(when (eql if-does-not-exist :create)
-	       `((when (not (probe-file ,filename))
-		   (create,name))))
+       (if (probe-file ,filename)
+	   ,(ecase if-exists
+		   (:supersede `(create ,name))
+		   (:update)
+		   (:error (error 'file-error "RRD file ~a already exists.")))
+	   ,(ecase if-does-not-exist
+		   (:create `(create ,name))
+		   (:error (error 'file-error "RRD file ~a does not exist."))))
        ,@body)))
 
 (defun ds-string (name type &rest dst-spec)
