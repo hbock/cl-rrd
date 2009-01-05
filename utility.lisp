@@ -21,7 +21,7 @@
 (defun to-string (value)
   (etypecase value
     (integer (format nil "~d" value))
-    (real   (format nil "~f" value))
+    (real   (format nil "~6$" value))
     (symbol (string value))
     (string value)))
 
